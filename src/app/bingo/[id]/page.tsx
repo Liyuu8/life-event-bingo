@@ -20,10 +20,10 @@ export default async function BingoPage({ params }: BingoPageProps) {
       <div className="container mx-auto py-8">
         <div className="mb-6">
           <Link
-            href="/bingo"
+            href="/"
             className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
           >
-            ← ビンゴ一覧に戻る
+            ← ホームに戻る
           </Link>
         </div>
         

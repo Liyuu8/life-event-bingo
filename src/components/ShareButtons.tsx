@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, RefObject } from 'react';
 import { BingoCard } from '@/types/bingo';
 import {
   generateBingoShareText,
@@ -12,16 +12,19 @@ import {
   copyToClipboard,
   ShareData
 } from '@/utils/shareUtils';
+import { generateBingoImage, downloadImage, shareImageFile } from '@/utils/imageUtils';
 
 interface ShareButtonsProps {
   bingo: BingoCard;
   completedCount: number;
+  bingoCardRef?: RefObject<HTMLDivElement | null>;
   className?: string;
 }
 
-export default function ShareButtons({ bingo, completedCount, className = '' }: ShareButtonsProps) {
+export default function ShareButtons({ bingo, completedCount, bingoCardRef, className = '' }: ShareButtonsProps) {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   const shareData: ShareData = {
     title: `${bingo.title} - ライフイベントビンゴ`,
@@ -35,7 +38,49 @@ export default function ShareButtons({ bingo, completedCount, className = '' }: 
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  const handleGenerateImage = async (): Promise<string | null> => {
+    if (!bingoCardRef?.current) {
+      showToastMessage('ビンゴカードが見つかりません');
+      return null;
+    }
+
+    setIsGeneratingImage(true);
+    try {
+      const imageDataUrl = await generateBingoImage(bingoCardRef.current);
+      if (!imageDataUrl) {
+        showToastMessage('画像の生成に失敗しました');
+        return null;
+      }
+      return imageDataUrl;
+    } catch {
+      showToastMessage('画像の生成中にエラーが発生しました');
+      return null;
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    const imageDataUrl = await handleGenerateImage();
+    if (imageDataUrl) {
+      const filename = `${bingo.title.replace(/[^a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, '_')}_bingo.png`;
+      downloadImage(imageDataUrl, filename);
+      showToastMessage('画像をダウンロードしました！');
+    }
+  };
+
   const handleWebShare = async () => {
+    if (bingoCardRef?.current) {
+      const imageDataUrl = await handleGenerateImage();
+      if (imageDataUrl) {
+        const filename = `${bingo.title}_bingo.png`;
+        const success = await shareImageFile(imageDataUrl, filename, shareData.title, shareData.text);
+        if (success) {
+          return;
+        }
+      }
+    }
+    
     const success = await shareWithWebAPI(shareData);
     if (!success) {
       showToastMessage('この機能はお使いのブラウザでサポートされていません');
@@ -56,6 +101,22 @@ export default function ShareButtons({ bingo, completedCount, className = '' }: 
     <div className={`relative ${className}`}>
       <div className="flex flex-col space-y-3">
         <h3 className="text-lg font-semibold text-gray-800 text-center">結果を共有する</h3>
+        
+        {/* Image Download Button */}
+        {bingoCardRef && (
+          <button
+            onClick={handleDownloadImage}
+            disabled={isGeneratingImage}
+            className="flex items-center justify-center space-x-2 bg-purple-500 hover:bg-purple-600 disabled:bg-purple-300 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-sm font-medium">
+              {isGeneratingImage ? '生成中...' : '画像をダウンロード'}
+            </span>
+          </button>
+        )}
         
         <div className="grid grid-cols-2 gap-3">
           {/* Twitter */}

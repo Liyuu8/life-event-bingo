@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { BingoCard as BingoCardType, UserProgress } from '@/types/bingo';
 import BingoCell from './BingoCell';
 import ShareButtons from './ShareButtons';
+import BingoImageCard from './BingoImageCard';
 
 interface BingoCardProps {
   bingo: BingoCardType;
@@ -15,6 +16,8 @@ export default function BingoCard({ bingo, userProgress, onCellClick }: BingoCar
   const [completedEvents, setCompletedEvents] = useState<string[]>(
     userProgress?.completedEvents || []
   );
+  const bingoCardRef = useRef<HTMLDivElement>(null);
+  const imageCardRef = useRef<HTMLDivElement>(null);
 
   const handleCellClick = (eventId: string) => {
     const newCompletedEvents = completedEvents.includes(eventId)
@@ -58,32 +61,48 @@ export default function BingoCard({ bingo, userProgress, onCellClick }: BingoCar
         {isBingo() && (
           <div className="mt-4 p-6 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
             <p className="text-xl font-bold text-yellow-800 mb-4">🎉 ビンゴ！おめでとうございます！ 🎉</p>
-            <ShareButtons bingo={bingo} completedCount={completedEvents.length} />
+            <ShareButtons bingo={bingo} completedCount={completedEvents.length} bingoCardRef={imageCardRef} />
           </div>
         )}
       </div>
       
-      <div className="grid grid-cols-5 gap-2 mb-6">
-        {bingo.events.slice(0, 25).map((event) => (
-          <BingoCell
-            key={event.id}
-            event={event}
-            isCompleted={completedEvents.includes(event.id)}
-            onClick={() => handleCellClick(event.id)}
-          />
-        ))}
-      </div>
+      <div ref={bingoCardRef} className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="mb-4 text-center">
+          <h2 className="text-xl font-bold text-gray-800">{bingo.title}</h2>
+          <p className="text-sm text-gray-600">{bingo.description}</p>
+        </div>
+        
+        <div className="grid grid-cols-5 gap-2 mb-4">
+          {bingo.events.slice(0, 25).map((event) => (
+            <BingoCell
+              key={event.id}
+              event={event}
+              isCompleted={completedEvents.includes(event.id)}
+              onClick={() => handleCellClick(event.id)}
+            />
+          ))}
+        </div>
 
-      <div className="text-center text-sm text-gray-500 mb-6">
-        完了した項目: {completedEvents.length} / 25
+        <div className="text-center text-sm text-gray-500">
+          完了した項目: {completedEvents.length} / 25
+        </div>
       </div>
 
       {/* 進行中でも共有可能 */}
       {!isBingo() && completedEvents.length > 0 && (
         <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-          <ShareButtons bingo={bingo} completedCount={completedEvents.length} />
+          <ShareButtons bingo={bingo} completedCount={completedEvents.length} bingoCardRef={imageCardRef} />
         </div>
       )}
+      
+      {/* Hidden image card for screenshot */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+        <BingoImageCard 
+          ref={imageCardRef}
+          bingo={bingo} 
+          completedEvents={completedEvents} 
+        />
+      </div>
     </div>
   );
 }
